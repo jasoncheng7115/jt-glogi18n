@@ -1,0 +1,67 @@
+/*!
+ * jt-glogi18n — Graylog Web UI Localization Pack (zh-TW / ja)
+ * CSS patch: font fallback and layout fixes for CJK locales.
+ *
+ * Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
+ * Licensed under the Apache License, Version 2.0.
+ * https://github.com/jasoncheng7115/jt-glogi18n
+ */
+
+/* ===== Graylog i18n zh-TW CSS Patch ===== */
+
+/* 1. 中文字型 fallback */
+body {
+    font-family: "Open Sans", "Microsoft JhengHei", "PingFang TC",
+                 "Noto Sans TC", "Source Han Sans TC", sans-serif !important;
+}
+
+/* 2. 導覽列：不換行 */
+.navbar .nav > li > a,
+nav a,
+[class*="NavigationLink"] {
+    white-space: nowrap;
+}
+
+/* 3. 按鈕：內容撐開寬度 */
+.btn,
+button {
+    white-space: nowrap;
+    min-width: auto;
+}
+
+/* 4. 下拉選單：確保寬度足夠 */
+.dropdown-menu {
+    min-width: 180px;
+}
+
+/* 5. 表格標頭：防止中文換行 */
+th {
+    white-space: nowrap;
+}
+
+/* 6. Modal 標題：不截斷 */
+.modal-title,
+[class*="ModalTitle"] {
+    white-space: normal;
+    word-break: keep-all;
+}
+
+/* 7. Badge / Pill：允許較長中文 */
+.badge,
+.label {
+    white-space: nowrap;
+}
+
+/* 8. Sidebar 項目 */
+.sidebar-nav li a,
+[class*="SidebarNav"] a {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 9. 相對時間範圍選擇器："ago" 是 CSS ::after 產生，改用中文 */
+#relative-timerange-from-unit + span::after,
+#relative-timerange-to-unit + span::after {
+    content: "前" !important;
+}

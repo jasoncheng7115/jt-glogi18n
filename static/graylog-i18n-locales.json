@@ -1,0 +1,15 @@
+{
+    "_meta": {
+        "version": "1.1.1",
+        "last_updated": "2026-04-21",
+        "author": "Jason Cheng (Jason Tools) <jason@jason.tools>",
+        "license": "Apache-2.0",
+        "homepage": "https://github.com/jasoncheng7115/jt-glogi18n"
+    },
+    "default": "zh-TW",
+    "locales": [
+        { "code": "en",    "short": "EN", "native": "English",   "dict": null },
+        { "code": "zh-TW", "short": "中", "native": "繁體中文",  "dict": "graylog-i18n-dict.json" },
+        { "code": "ja",    "short": "日", "native": "日本語",    "dict": "graylog-i18n-ja.json" }
+    ]
+}
