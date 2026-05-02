@@ -1,4 +1,4 @@
-# jt-glogi18n — Graylog Web UI 本地化套件（繁體中文 / 日本語）  `v3.1.0`
+# jt-glogi18n — Graylog Web UI 本地化套件（繁體中文 / 日本語）  `v3.1.2`
 
 透過 Nginx `sub_filter` 在 HTTP 回應的 `</head>` 前注入翻譯腳本與 CSS，
 將 Graylog Web UI 介面在瀏覽器端翻譯為 **繁體中文 （zh-TW）** 或

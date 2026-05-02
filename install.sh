@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.1
+# VERSION: 1.3.2
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.1"
+readonly INSTALLER_VERSION="1.3.2"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -65,6 +65,7 @@ BACKEND="${BACKEND:-127.0.0.1:9000}"
 SSL_CRT="${SSL_CRT:-}"
 SSL_KEY="${SSL_KEY:-}"
 OPEN_FIREWALL="${OPEN_FIREWALL:-ask}"   # yes | no | ask
+SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
 NO_COLOR="${NO_COLOR:-}"
 
 # ---- output / logging --------------------------------------------------------
@@ -274,6 +275,89 @@ check_port_conflict() {
         echo "$out" | sed 's/^/    /'
         return 1
     fi
+    return 0
+}
+
+# Scan the resolved nginx config (nginx -T) for ssl_certificate /
+# ssl_certificate_key directives. Populates MISSING_SSL_PAIRS as
+# "cert_path|key_path" entries for pairs whose files don't exist.
+# Returns 0 when at least one missing pair was found, 1 otherwise.
+detect_broken_ssl_in_existing_conf() {
+    MISSING_SSL_PAIRS=()
+    command -v nginx >/dev/null 2>&1 || return 1
+    local dump
+    dump="$(nginx -T 2>/dev/null || true)"
+    [ -n "$dump" ] || return 1
+    local certs keys
+    certs="$(printf '%s\n' "$dump" \
+        | awk '/^[[:space:]]*ssl_certificate[[:space:]]/{
+                gsub(/^[[:space:]]*ssl_certificate[[:space:]]+/, "");
+                gsub(/[";]/, "");
+                gsub(/[[:space:]].*$/, "");
+                print
+            }')"
+    keys="$(printf '%s\n' "$dump" \
+        | awk '/^[[:space:]]*ssl_certificate_key[[:space:]]/{
+                gsub(/^[[:space:]]*ssl_certificate_key[[:space:]]+/, "");
+                gsub(/[";]/, "");
+                gsub(/[[:space:]].*$/, "");
+                print
+            }')"
+    local cert_arr=() key_arr=()
+    while IFS= read -r line; do [ -n "$line" ] && cert_arr+=("$line"); done <<<"$certs"
+    while IFS= read -r line; do [ -n "$line" ] && key_arr+=("$line"); done <<<"$keys"
+    local n=${#cert_arr[@]} m=${#key_arr[@]} max=$((n>m?m:n))
+    local i
+    for ((i=0; i<max; i++)); do
+        local c="${cert_arr[$i]}" k="${key_arr[$i]}"
+        if [ ! -f "$c" ] || [ ! -f "$k" ]; then
+            MISSING_SSL_PAIRS+=("$c|$k")
+        fi
+    done
+    [ "${#MISSING_SSL_PAIRS[@]}" -gt 0 ]
+}
+
+# Generate a 10-year self-signed cert at every path in MISSING_SSL_PAIRS.
+# CN defaults to $DOMAIN, falls back to hostname when DOMAIN is "_" or empty.
+generate_selfsigned_for_missing() {
+    command -v openssl >/dev/null 2>&1 || { err "openssl not found, cannot self-sign"; return 1; }
+    local pair cert key cert_dir key_dir cn
+    cn="${DOMAIN:-}"
+    if [ -z "$cn" ] || [ "$cn" = "_" ]; then
+        cn="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo localhost)"
+    fi
+    for pair in "${MISSING_SSL_PAIRS[@]}"; do
+        cert="${pair%|*}"
+        key="${pair#*|}"
+        cert_dir="$(dirname "$cert")"
+        key_dir="$(dirname "$key")"
+        run install -d -m 0755 "$cert_dir"
+        run install -d -m 0700 "$key_dir"
+        info "Generating self-signed cert (10 years, CN=$cn): $cert"
+        if [ "$DRY_RUN" = 1 ]; then
+            info "[dry-run] would openssl req -x509 -newkey rsa:2048 -days 3650 ..."
+            continue
+        fi
+        if ! openssl req -x509 -newkey rsa:2048 -nodes \
+                -days 3650 \
+                -keyout "$key" \
+                -out "$cert" \
+                -subj "/CN=$cn" \
+                -addext "subjectAltName=DNS:$cn,DNS:localhost,IP:127.0.0.1" \
+                >/dev/null 2>&1; then
+            warn "openssl failed at $cert; retrying without -addext (older openssl?)"
+            openssl req -x509 -newkey rsa:2048 -nodes \
+                -days 3650 \
+                -keyout "$key" \
+                -out "$cert" \
+                -subj "/CN=$cn" \
+                >/dev/null 2>&1 \
+                || { err "Failed to generate self-signed cert at $cert"; return 1; }
+        fi
+        chmod 0644 "$cert" 2>/dev/null || true
+        chmod 0600 "$key"  2>/dev/null || true
+        ok "Self-signed cert written: $cert (10 years, key: $key)"
+    done
     return 0
 }
 
@@ -515,14 +599,23 @@ valid_backend() {
 
 prompt_config() {
     if [ -z "$DOMAIN" ]; then
-        [ "$ASSUME_YES" = "1" ] && die "DOMAIN is required when ASSUME_YES=1 (use --domain or env)"
-        while :; do
-            read -rp "Site domain (e.g. graylog.example.com, IP allowed): " DOMAIN
-            [ -n "$DOMAIN" ] && valid_domain "$DOMAIN" && break
-            warn "Invalid domain format, try again"
-        done
+        if [ "$ASSUME_YES" = "1" ]; then
+            DOMAIN="_"
+            info "DOMAIN not set; using catch-all server_name (_) for non-interactive install"
+        else
+            while :; do
+                read -rp "Site domain (e.g. graylog.example.com / IP, blank = catch-all): " DOMAIN
+                if [ -z "$DOMAIN" ]; then
+                    DOMAIN="_"
+                    info "Using catch-all server_name (_) — Nginx will accept requests on any Host header."
+                    break
+                fi
+                valid_domain "$DOMAIN" && break
+                warn "Invalid domain format, try again"
+            done
+        fi
     else
-        valid_domain "$DOMAIN" || die "Invalid DOMAIN format: $DOMAIN"
+        [ "$DOMAIN" = "_" ] || valid_domain "$DOMAIN" || die "Invalid DOMAIN format: $DOMAIN"
     fi
 
     if [ "$ASSUME_YES" != "1" ]; then
@@ -732,11 +825,19 @@ do_reload() {
 verify_deployment() {
     command -v curl >/dev/null 2>&1 || { vlog "curl not available, skipping verification"; return 0; }
     step "Verifying deployment"
-    local scheme url code
+    local scheme url code host_header_args
     scheme="http"; [ -n "$SSL_CRT" ] && scheme="https"
+    # When DOMAIN is the catch-all "_", don't override the Host header
+    # (Nginx accepts any Host); otherwise pin it to the configured domain
+    # so we hit our own server block during the local probe.
+    if [ "$DOMAIN" = "_" ]; then
+        host_header_args=()
+    else
+        host_header_args=(-H "Host: $DOMAIN")
+    fi
     url="$scheme://127.0.0.1/graylog-i18n/graylog-i18n-dict.json"
     code="$(curl -sSk --max-time 5 -o /dev/null -w '%{http_code}' \
-              -H "Host: $DOMAIN" "$url" 2>/dev/null)" || code="000"
+              "${host_header_args[@]}" "$url" 2>/dev/null)" || code="000"
     if [ "$code" = "200" ]; then
         ok "Static assets reachable: $url (HTTP $code)"
     else
@@ -745,7 +846,7 @@ verify_deployment() {
 
     url="$scheme://127.0.0.1/"
     local body
-    body="$(curl -sSk --max-time 5 -H "Host: $DOMAIN" "$url" 2>/dev/null || true)"
+    body="$(curl -sSk --max-time 5 "${host_header_args[@]}" "$url" 2>/dev/null || true)"
     if grep -q "graylog-i18n-zh-tw.js" <<<"$body"; then
         ok "Injection confirmed: graylog-i18n-zh-tw.js present in HTML"
     else
@@ -787,12 +888,35 @@ cmd_install() {
     # environment is already broken (undefined log_format, missing include,
     # etc.) the post-write 'nginx -t' fails confusingly and rollback triggers
     # even though our new file isn't the cause.
-    if ! nginx -t >/dev/null 2>&1; then
+    if [ "$SKIP_PREFLIGHT" = 1 ]; then
+        warn "Skipping pre-flight nginx -t (--skip-preflight). Post-write rollback may trigger if your existing config is broken."
+    elif ! nginx -t >/dev/null 2>&1; then
         err "'nginx -t' already fails on your existing configuration:"
         nginx -t 2>&1 | sed 's/^/    /'
-        die "Please fix the existing nginx configuration first, then re-run this installer."
+        if detect_broken_ssl_in_existing_conf; then
+            info "Detected ${#MISSING_SSL_PAIRS[@]} broken HTTPS cert reference(s) in your existing nginx config:"
+            local _pair
+            for _pair in "${MISSING_SSL_PAIRS[@]}"; do
+                info "  cert: ${_pair%|*}"
+                info "  key : ${_pair#*|}"
+            done
+            if confirm "Generate 10-year self-signed certificates at those exact paths so your existing config validates?" y; then
+                if generate_selfsigned_for_missing && nginx -t >/dev/null 2>&1; then
+                    ok "Self-signed certs generated; existing nginx config now valid."
+                else
+                    err "Even after self-signing, nginx -t still fails:"
+                    nginx -t 2>&1 | sed 's/^/    /'
+                    die "Please inspect your existing nginx configuration manually."
+                fi
+            else
+                die "Please fix the existing nginx configuration first, then re-run. (Or re-run with --skip-preflight — not recommended.)"
+            fi
+        else
+            die "Please fix the existing nginx configuration first, then re-run. (Or re-run with --skip-preflight — not recommended.)"
+        fi
+    else
+        ok "Existing nginx configuration is valid"
     fi
-    ok "Existing nginx configuration is valid"
 
     step "Writing nginx configuration"
     write_full_conf
@@ -993,11 +1117,15 @@ Flags:
       --ssl-crt=/path          TLS certificate (setting this enables HTTPS)
       --ssl-key=/path          TLS private key
       --open-firewall=yes|no   force / skip firewall opening (default: ask)
+      --skip-preflight         do NOT run 'nginx -t' on the existing config
+                               before writing ours (use only if you know
+                               your config has unrelated pre-existing issues
+                               you can't fix right now)
       --no-color               disable ANSI colors
 
 Environment variables (equivalent to flags):
   ASSUME_YES, DRY_RUN, VERBOSE, DOMAIN, BACKEND, SSL_CRT, SSL_KEY,
-  OPEN_FIREWALL, NO_COLOR
+  OPEN_FIREWALL, SKIP_PREFLIGHT, NO_COLOR
 
 Install modes (auto-selected):
   A) nginx not installed        -> installed via apt/dnf/yum/zypper/apk/pacman
@@ -1038,6 +1166,7 @@ while [ $# -gt 0 ]; do
         --ssl-key=*)          SSL_KEY="${1#*=}" ;;
         --open-firewall)      shift; OPEN_FIREWALL="${1:-ask}" ;;
         --open-firewall=*)    OPEN_FIREWALL="${1#*=}" ;;
+        --skip-preflight)     SKIP_PREFLIGHT=1 ;;
         install|update|uninstall|status|doctor|rollback) CMD="$1" ;;
         --) shift; break ;;
         -*) err "Unknown flag: $1"; echo; cmd_help; exit 1 ;;

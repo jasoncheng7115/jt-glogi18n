@@ -7,6 +7,76 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.2] — 2026-05-02
+
+**Theme: better installer UX for fresh Graylog hosts.**
+
+### Added
+- **`Site domain` is now optional**: blank input is accepted and falls back
+  to Nginx catch-all `server_name _` (works fine for single-Graylog hosts
+  where users just want IP-based access).
+- **Self-signed cert auto-fix on pre-flight failure**: when `nginx -t`
+  fails because the existing config references missing
+  `ssl_certificate` / `ssl_certificate_key` files, the installer now
+  offers to generate a 10-year self-signed RSA-2048 cert at those exact
+  paths (no edit to the user's nginx config). CN defaults to `$DOMAIN`,
+  falling back to the host's FQDN when the catch-all is in use.
+- **`--skip-preflight` flag** (and `SKIP_PREFLIGHT=1` env): bypass the
+  pre-flight `nginx -t` check for the rare case the user knowingly has
+  unrelated broken state they can't fix right now. Not recommended.
+
+### Fixed
+- `verify_deployment` no longer pins `Host: _` when running in catch-all
+  mode (the catch-all server matches any Host header anyway).
+
+### Installer
+- `install.sh` v1.3.1 → **v1.3.2**.
+
+---
+
+## [3.1.1] — 2026-05-02
+
+**Theme: installer robustness + documentation polish for the public repo.**
+
+### Fixed
+- **`install.sh` "are the same file" abort when cloned to `/opt/jt-glogi18n`**:
+  the documented quick-install path (`git clone … && cd … && sudo bash install.sh`)
+  put the script's source dir at the same path as the install dir, so the
+  internal `install -m 0644 src dst` failed with
+  `'…/static/graylog-i18n-zh-tw.js' and '…/static/graylog-i18n-zh-tw.js' are the same file`.
+  `install_static()` now detects same-inode (`-ef`) and skips the copy
+  (files are already in place); `chmod 0644` still applied.
+- **README install instructions now use `sudo bash install.sh`** so the
+  executable bit on `install.sh` after `git clone` is irrelevant.
+- Removed a stray duplicate `nginx/install.sh` from the public mirror —
+  `nginx/` now only contains `graylog-i18n.conf` as documented.
+- `README_zh-TW.md` punctuation normalised to full-width per zh-TW prose
+  conventions; markdown image syntax `![alt](url)` preserved.
+- Spaces added around `**X**` bold markers that flank CJK characters in
+  the zh-TW README so GitHub's CommonMark parser recognises the emphasis.
+
+### Security
+- Internal-host IPs scrubbed from `CHANGELOG*.md` and `TESTING*.md`
+  (replaced with `<prod-host>` / `<test-host>` / `<lab-host>`); RFC 1918
+  example IPs inside the JSON dictionaries are translated documentation
+  and intentionally retained.
+- `.DS_Store` removed; `.gitignore` added to keep it out going forward.
+
+### Translations
+- Dict `2.9.5` / ja `0.5.5`:
+  - Bare-name **`Optimizing index <name>.`** pattern (Graylog 7 dropped
+    the `<…>` brackets in System Job rows).
+  - Fragment **`failed indexing attempts in the last 24 hours.`** for the
+    DOM-split "Total N _failed indexing attempts in the last 24 hours._"
+    line.
+  - **`index set field types`** fragment for the empty-state row in field
+    type management.
+
+### Installer
+- `install.sh` v1.3.0 → **v1.3.1**.
+
+---
+
 ## [3.0.0] — 2026-04-20
 
 **Theme: add Japanese (ja) locale with 1:1 parity to zh-TW; fix Material icon glyphs being force-translated.**

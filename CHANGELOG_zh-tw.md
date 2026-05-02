@@ -7,6 +7,74 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.2] — 2026-05-02
+
+**主題:乾淨 Graylog 主機上的安裝程式 UX 改善。**
+
+### Added
+- **`Site domain` 改為選填**:直接按 Enter 留空,會自動使用 Nginx 的
+  catch-all `server_name _`(單機 Graylog、純 IP 存取的情境本來就不需要
+  domain)。
+- **Pre-flight 失敗時自動 self-sign 修補**:若既有 nginx 設定引用的
+  `ssl_certificate` / `ssl_certificate_key` 檔案不存在(常見於 Let's
+  Encrypt 沒裝、cert 路徑筆誤等),安裝程式現在會列出所有缺檔的
+  cert/key 對,**詢問**是否在原路徑直接產生 10 年期的 RSA-2048 自簽
+  憑證來修補(完全不動使用者的 nginx 設定)。CN 預設用 `$DOMAIN`,
+  catch-all 模式下退回主機 FQDN。
+- **`--skip-preflight` 旗標**(與 `SKIP_PREFLIGHT=1` 環境變數):
+  跳過 pre-flight 的 `nginx -t`。僅供使用者明確知道有無關的既有
+  broken state、暫時無法修復時使用,不建議常駐。
+
+### Fixed
+- `verify_deployment` 在 catch-all 模式下不再硬塞 `Host: _` header
+  (catch-all server 本來就接受任何 Host)。
+
+### Installer
+- `install.sh` v1.3.1 → **v1.3.2**。
+
+---
+
+## [3.1.1] — 2026-05-02
+
+**主題:安裝程式強化 + 公開 repo 的文件修整。**
+
+### Fixed
+- **`install.sh` 在 `/opt/jt-glogi18n` 路徑下「are the same file」中斷**:
+  README 提供的快速安裝路徑(`git clone … && cd … && sudo bash install.sh`)
+  讓 source 與 install 目錄落在同路徑,內部 `install -m 0644 src dst`
+  會以
+  `'…/static/graylog-i18n-zh-tw.js' and '…/static/graylog-i18n-zh-tw.js' are the same file`
+  失敗。`install_static()` 現在偵測 same-inode(`-ef`),已在原位則跳過
+  複製、僅 `chmod 0644`。
+- **README 安裝指令改用 `sudo bash install.sh`**,不再依賴 `git clone`
+  後 `install.sh` 的執行權限位。
+- 移除公開 mirror 中殘留的 `nginx/install.sh` —— `nginx/` 現在只有
+  `graylog-i18n.conf` 一檔(文件原本就只描述這一檔)。
+- `README_zh-TW.md` 標點正規化為全形(符合中文行文慣例);Markdown
+  image 語法 `![alt](url)` 已保護不被誤轉。
+- 在 zh-TW README 中,跨 CJK 的 `**X**` 粗體標記前後加空格,讓 GitHub
+  CommonMark parser 正確判定為強調。
+
+### Security
+- 公開檔案的內網 IP 全數清除:`CHANGELOG*.md` 與 `TESTING*.md` 中
+  `<prod-host>/127/83` 替換為 `<prod-host>` / `<test-host>` /
+  `<lab-host>`;JSON 字典裡 RFC 1918 的範例 IP 是翻譯文件本身的內容,
+  保留。
+- 刪除 `.DS_Store`;新增 `.gitignore` 防止未來再混進來。
+
+### Translations
+- 字典 `2.9.5` / 日文 `0.5.5`:
+  - **`Optimizing index <name>.`** 純名稱版 pattern(Graylog 7 把
+    System Job 列移除了角括號)。
+  - 片段 **`failed indexing attempts in the last 24 hours.`** 對應拆碎的
+    「Total N _failed indexing attempts in the last 24 hours._」一行。
+  - **`index set field types`** 對應欄位型別管理空狀態列。
+
+### Installer
+- `install.sh` v1.3.0 → **v1.3.1**。
+
+---
+
 ## [3.0.0] — 2026-04-20
 
 **主題：加入日文（ja）語系、與繁中 1:1 同步；修復 Material icon 被強制翻譯的 bug。**
@@ -18,7 +86,7 @@
   - 產品名、Graylog 欄位名、技術識別碼：zh-TW 保留原文的，ja 同樣保留。
   - 日文使用日本 IT 業界慣用術語：入力器 / 出力器 / 抽出器 / 参照テーブル / パイプライン / インデックスセット / ダッシュボード / ストリーム / 通知 / イベント定義 / 認証サービス。
 - `graylog-i18n-locales.json` 加入 `{ code: 'ja', native: '日本語', dict: 'graylog-i18n-ja.json' }`。
-- 浮球改為三段切換：**English / 繁體中文 / 日本語**；首次載入 `detectPreferredLocale()` 依 `navigator.languages` 選擇（`/^ja(?:-|$)/i` → ja；`zh-Hant` → zh-TW；其餘 → 英文）。
+- 懸浮按鈕改為三段切換：**English / 繁體中文 / 日本語**；首次載入 `detectPreferredLocale()` 依 `navigator.languages` 選擇（`/^ja(?:-|$)/i` → ja；`zh-Hant` → zh-TW；其餘 → 英文）。
 - `CLAUDE.md` 加入「日文字典規則」— ja 必須與 zh-TW 逐條 1:1，禁止新增 zh-TW 沒有的條目；新增翻譯流程：先加 zh-TW → 再同步加 ja。
 
 ### 機制變更（JS）
@@ -43,7 +111,7 @@
 ### 機制變更
 
 - **首次載入自動偵測語系**：讀取 `navigator.languages`，符合 zh-TW / zh-HK / zh-MO / zh-Hant 時自動套繁中；其他（包含 zh-CN）退回英文（不翻譯）。使用者手動切換後仍以 `localStorage` 紀錄為準。
-- **浮球位置 viewport clamp**：`graylog-i18n-toggle-pos` 還原時若超出當前視窗 (換螢幕 / 縮視窗) 自動夾回可視範圍，不會再消失。
+- **懸浮按鈕位置 viewport clamp**：`graylog-i18n-toggle-pos` 還原時若超出當前視窗 (換螢幕 / 縮視窗) 自動夾回可視範圍，不會再消失。
 - **`ALWAYS_TRANSLATE_TEXTS` 白名單**：精確文字比對即跳過 SKIP zone 翻譯。目前收錄 `(Empty Value)` — 小工具值欄位內的 placeholder 仍可在地化，而周邊使用者資料維持不翻。
 - **DOM 拆碎的 "No <noun>." CONDITIONAL**：為 `events` / `dashboards` / `streams` / `searches` / `alerts` / `notifications` / `pipelines` / `rules` / `users` / `teams` / `roles` 加上守衛條件，僅在前段以「沒有」或「No」結尾時觸發。
 - **`<th>` 限定的 CONDITIONAL 表頭**：`Filename` / `Size` 只在 `<th>` 內翻譯，避開訊息欄位值與小工具儲存格。
