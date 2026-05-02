@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.5
+# VERSION: 1.3.6
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.5"
+readonly INSTALLER_VERSION="1.3.6"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -912,7 +912,7 @@ cmd_install() {
         warn "Skipping pre-flight nginx -t (--skip-preflight). Post-write rollback may trigger if your existing config is broken."
     elif ! nginx -t >/dev/null 2>&1; then
         err "'nginx -t' already fails on your existing configuration:"
-        nginx -t 2>&1 | sed 's/^/    /'
+        nginx -t 2>&1 | sed 's/^/    /' || true
         if detect_broken_ssl_in_existing_conf; then
             info "Detected ${#MISSING_SSL_PAIRS[@]} broken HTTPS cert reference(s) in your existing nginx config:"
             local _pair
@@ -925,7 +925,7 @@ cmd_install() {
                     ok "Self-signed certs generated; existing nginx config now valid."
                 else
                     err "Even after self-signing, nginx -t still fails:"
-                    nginx -t 2>&1 | sed 's/^/    /'
+                    nginx -t 2>&1 | sed 's/^/    /' || true
                     die "Please inspect your existing nginx configuration manually."
                 fi
             else
@@ -1042,7 +1042,7 @@ cmd_status() {
     fi
     echo
     if command -v nginx >/dev/null 2>&1; then
-        nginx -t 2>&1 | sed 's/^/    /'
+        nginx -t 2>&1 | sed 's/^/    /' || true
     fi
 }
 
