@@ -7,6 +7,24 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.5] — 2026-05-02
+
+### Fixed
+- **Self-sign auto-fix now actually triggers when the existing cert is
+  missing.** v3.1.2's `detect_broken_ssl_in_existing_conf` parsed
+  `nginx -T` — but when the existing config already fails (e.g. the
+  `ssl_certificate` path doesn't exist on disk), `nginx -T` emits nothing
+  to stdout, so detection returned 0 missing pairs and the prompt never
+  appeared. Replaced with a direct file walk under `/etc/nginx`
+  (following symlinks via `find -L`) that scans every regular file for
+  `ssl_certificate` / `ssl_certificate_key` directives — comments
+  stripped — and pairs them in occurrence order.
+
+### Installer
+- `install.sh` v1.3.3 → **v1.3.4**.
+
+---
+
 ## [3.1.4] — 2026-05-02
 
 ### Changed

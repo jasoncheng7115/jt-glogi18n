@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.3
+# VERSION: 1.3.4
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.3"
+readonly INSTALLER_VERSION="1.3.4"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -278,30 +278,44 @@ check_port_conflict() {
     return 0
 }
 
-# Scan the resolved nginx config (nginx -T) for ssl_certificate /
-# ssl_certificate_key directives. Populates MISSING_SSL_PAIRS as
-# "cert_path|key_path" entries for pairs whose files don't exist.
+# Scan nginx config files for ssl_certificate / ssl_certificate_key
+# directives and populate MISSING_SSL_PAIRS with "cert_path|key_path"
+# entries for pairs whose files don't exist on disk.
+#
+# Important: we do NOT use `nginx -T` here, because when the running
+# config already fails (e.g. one of the cert files is missing), nginx -T
+# emits nothing to stdout — exactly the case we need to handle. Instead
+# we walk /etc/nginx with `find -L` (so sites-enabled symlinks are
+# followed) and scan every regular file we land on.
+#
 # Returns 0 when at least one missing pair was found, 1 otherwise.
 detect_broken_ssl_in_existing_conf() {
     MISSING_SSL_PAIRS=()
-    command -v nginx >/dev/null 2>&1 || return 1
+    local conf_root="/etc/nginx"
+    [ -d "$conf_root" ] || return 1
+    # Concatenate all readable files under /etc/nginx (follow symlinks).
     local dump
-    dump="$(nginx -T 2>/dev/null || true)"
+    dump="$(find -L "$conf_root" -type f -print 2>/dev/null \
+            | while IFS= read -r f; do cat -- "$f" 2>/dev/null; echo; done)"
     [ -n "$dump" ] || return 1
+    # Strip lines that are entirely a comment so we don't pick up paths
+    # inside disabled examples (basic guard, not a full parser).
+    local stripped
+    stripped="$(printf '%s\n' "$dump" | sed -e 's/[[:space:]]*#.*$//')"
     local certs keys
-    certs="$(printf '%s\n' "$dump" \
+    certs="$(printf '%s\n' "$stripped" \
         | awk '/^[[:space:]]*ssl_certificate[[:space:]]/{
                 gsub(/^[[:space:]]*ssl_certificate[[:space:]]+/, "");
                 gsub(/[";]/, "");
                 gsub(/[[:space:]].*$/, "");
-                print
+                if (length($0)) print
             }')"
-    keys="$(printf '%s\n' "$dump" \
+    keys="$(printf '%s\n' "$stripped" \
         | awk '/^[[:space:]]*ssl_certificate_key[[:space:]]/{
                 gsub(/^[[:space:]]*ssl_certificate_key[[:space:]]+/, "");
                 gsub(/[";]/, "");
                 gsub(/[[:space:]].*$/, "");
-                print
+                if (length($0)) print
             }')"
     local cert_arr=() key_arr=()
     while IFS= read -r line; do [ -n "$line" ] && cert_arr+=("$line"); done <<<"$certs"
