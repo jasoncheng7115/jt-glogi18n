@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.4
+# VERSION: 1.3.5
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.4"
+readonly INSTALLER_VERSION="1.3.5"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -320,8 +320,14 @@ detect_broken_ssl_in_existing_conf() {
     local cert_arr=() key_arr=()
     while IFS= read -r line; do [ -n "$line" ] && cert_arr+=("$line"); done <<<"$certs"
     while IFS= read -r line; do [ -n "$line" ] && key_arr+=("$line"); done <<<"$keys"
-    local n=${#cert_arr[@]} m=${#key_arr[@]} max=$((n>m?m:n))
-    local i
+    # NOTE: declaring n/m/max on a single `local` line + inline arithmetic
+    # ($((n>m?m:n))) tripped `set -u` in some bash builds (the inner refs
+    # to n/m are evaluated before the local bindings settle). Keep these
+    # on separate lines.
+    local n m max i
+    n=${#cert_arr[@]}
+    m=${#key_arr[@]}
+    if [ "$n" -lt "$m" ]; then max=$n; else max=$m; fi
     for ((i=0; i<max; i++)); do
         local c="${cert_arr[$i]}" k="${key_arr[$i]}"
         if [ ! -f "$c" ] || [ ! -f "$k" ]; then

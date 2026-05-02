@@ -7,6 +7,21 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.6] — 2026-05-02
+
+### Fixed
+- **Self-sign 自動修補真的會觸發了(第二回合)。** v3.1.5 把偵測接到
+  檔案掃描,但函式仍會在 `set -u` 下中斷 ── 因為原本一行寫
+  `local n=… m=… max=$((n>m?m:n))`,bash 在內聯 `local` 綁定生效前
+  就求值了算術,觸發「unbound variable: n」。已在 graylog7
+  (Ubuntu 22.04 / nginx 1.18 / 缺檔的 Let's Encrypt cert 路徑)實機
+  測過,現在正確列出所有缺檔對並詢問是否自簽。
+
+### Installer
+- `install.sh` v1.3.4 → **v1.3.5**。
+
+---
+
 ## [3.1.5] — 2026-05-02
 
 ### Fixed

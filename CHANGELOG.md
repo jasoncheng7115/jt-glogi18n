@@ -7,6 +7,22 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.6] — 2026-05-02
+
+### Fixed
+- **Self-sign auto-fix actually fires now (round 2).** v3.1.5 wired the
+  detection up to a file scan, but the function still aborted on
+  `set -u` because it declared `local n=… m=… max=$((n>m?m:n))` on one
+  line — bash evaluated the arithmetic before the inline `local`
+  bindings landed and tripped "unbound variable: n". Tested on
+  Ubuntu 22.04 / nginx 1.18 with a missing Let's Encrypt cert path —
+  now correctly enumerates broken pairs and prompts for self-sign.
+
+### Installer
+- `install.sh` v1.3.4 → **v1.3.5**.
+
+---
+
 ## [3.1.5] — 2026-05-02
 
 ### Fixed
