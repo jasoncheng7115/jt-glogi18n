@@ -10,12 +10,12 @@
 ## 0. 測試前準備
 
 - [ ] 取得新字典 / JS / CSS / install.sh 最新版
-- [ ] 測試主機：`ssh root@192.168.1.132` 可連線（或 staging 機）
+- [ ] 測試主機：`ssh root@<prod-host>` 可連線（或 staging 機）
 - [ ] 瀏覽器：Chrome 最新版、Firefox 最新版；DevTools 開啟
 - [ ] 測試 URL：`https://log4.jason.tools/`
 - [ ] 已知遠端目前字典版本：
   ```bash
-  ssh root@192.168.1.132 \
+  ssh root@<prod-host> \
       'python3 -c "import json;print(json.load(open(\"/opt/jt-glogi18n/static/graylog-i18n-dict.json\"))[\"_meta\"][\"version\"])"'
   ```
 
@@ -386,7 +386,7 @@ localStorage.setItem('graylog-i18n-debug', 'true'); location.reload();
 
 ```bash
 DOMAIN=log4.jason.tools
-REMOTE=root@192.168.1.132
+REMOTE=root@<prod-host>
 ```
 
 - [ ] 檔案時間：

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "version": "0.5.3",
+    "version": "0.5.5",
     "graylog_version": "6.0 / 6.1 / 6.2 / 6.3 / 7.0",
     "locale": "ja",
     "last_updated": "2026-04-21",
@@ -1428,6 +1428,8 @@
     "Indexer failures documentation": "インデックス失敗のドキュメント",
     "Every message that was not successfully indexed will be logged as an indexer failure.": "インデックスに失敗したメッセージはインデックス失敗として記録されます。",
     "No failed indexing attempts in the last 24 hours.": "過去 24 時間にインデックス失敗は発生していません。",
+    "failed indexing attempts in the last 24 hours.": "回のインデックス失敗が過去 24 時間以内に発生しました。",
+    "index set field types": "インデックスセットのフィールドタイプ",
     "Show errors": "エラーを表示",
     "Letter ID": "メッセージ ID",
     "Error message": "エラーメッセージ",
@@ -7156,6 +7158,10 @@
     {
       "match": "^Optimizing index <(.+?)>\\.$",
       "replace": "インデックス <$1> を最適化中。"
+    },
+    {
+      "match": "^Optimizing index ([A-Za-z0-9_][A-Za-z0-9_.-]*)\\.$",
+      "replace": "インデックス $1 を最適化中。"
     },
     {
       "match": "^Flushed and set <(.+?)> to read-only\\.$",

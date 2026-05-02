@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Backups produced by install.sh
+/opt/jt-glogi18n/backups/
+
+# Temporary mining artifacts
+toast-patterns-draft.json
+toast-patterns-final.json
+pipeline-functions-zh-tw.json
+pipeline-more-drafts.json
+notifications-draft.json
+
+# Editor cruft
+*.swp
+*~
+.idea/
+.vscode/

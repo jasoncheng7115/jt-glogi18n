@@ -62,12 +62,13 @@ and a suggested replacement. See the [reporting guide](CONTRIBUTING.md).
 
 ## Quick install
 
-Clone the repo and run the installer:
+Clone the repo and run the installer with `bash` (works regardless of the
+file's executable bit after `git clone`):
 
 ```bash
 git clone https://github.com/jasoncheng7115/jt-glogi18n.git
 cd jt-glogi18n
-sudo ./install.sh
+sudo bash install.sh
 ```
 
 The installer auto-detects your environment and chooses the right mode:

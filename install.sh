@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.0
+# VERSION: 1.3.1
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.0"
+readonly INSTALLER_VERSION="1.3.1"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -487,9 +487,19 @@ install_static() {
     run install -d -m 0755 "$INSTALL_DIR"
     run install -d -m 0700 "$BACKUP_ROOT"
     local f
-    for f in "${REQUIRED_FILES[@]}"; do
-        run install -m 0644 "$STATIC_SRC/$f" "$INSTALL_DIR/"
-    done
+    # If the user cloned the repo to $INSTALL_ROOT (so $STATIC_SRC IS
+    # $INSTALL_DIR), `install -m 0644 src dst` would error with
+    # "are the same file". Detect via -ef (same inode) and skip the copy.
+    if [ -d "$STATIC_SRC" ] && [ -d "$INSTALL_DIR" ] && [ "$STATIC_SRC" -ef "$INSTALL_DIR" ]; then
+        info "Source dir is the install dir ($STATIC_SRC); files already in place, no copy needed."
+        for f in "${REQUIRED_FILES[@]}"; do
+            run chmod 0644 "$INSTALL_DIR/$f" 2>/dev/null || true
+        done
+    else
+        for f in "${REQUIRED_FILES[@]}"; do
+            run install -m 0644 "$STATIC_SRC/$f" "$INSTALL_DIR/"
+        done
+    fi
     ok "Static files deployed to $INSTALL_DIR"
     apply_selinux_context
 }

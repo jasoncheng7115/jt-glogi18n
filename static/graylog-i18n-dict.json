@@ -1,6 +1,6 @@
 {
     "_meta": {
-        "version": "2.9.3",
+        "version": "2.9.5",
         "graylog_version": "6.0 / 6.1 / 6.2 / 6.3 / 7.0",
         "locale": "zh-TW",
         "last_updated": "2026-04-21",
@@ -1427,6 +1427,8 @@
         "Indexer failures documentation": "索引失敗說明文件",
         "Every message that was not successfully indexed will be logged as an indexer failure.": "未成功被索引的訊息都會以索引失敗的形式記錄下來。",
         "No failed indexing attempts in the last 24 hours.": "過去 24 小時內沒有失敗的索引嘗試。",
+        "failed indexing attempts in the last 24 hours.": "次失敗的索引嘗試發生於過去 24 小時內。",
+        "index set field types": "索引集欄位型別",
         "Show errors": "顯示錯誤",
         "Letter ID": "訊息 ID",
         "Error message": "錯誤訊息",
@@ -7169,6 +7171,10 @@
         {
             "match": "^Optimizing index <(.+?)>\\.$",
             "replace": "正在最佳化索引 <$1>。"
+        },
+        {
+            "match": "^Optimizing index ([A-Za-z0-9_][A-Za-z0-9_.-]*)\\.$",
+            "replace": "正在最佳化索引 $1。"
         },
         {
             "match": "^Flushed and set <(.+?)> to read-only\\.$",

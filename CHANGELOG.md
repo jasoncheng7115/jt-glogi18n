@@ -29,7 +29,7 @@ bumps for dictionary-only changes.
 
 ### Deploy
 
-- Pushed to all three hosts: `root@192.168.1.132` (prod), `root@192.168.1.127` (test), `root@192.168.1.83` (lab).
+- Pushed to all three hosts: `root@<prod-host>` (prod), `root@<test-host>` (test), `root@<lab-host>` (lab).
 - `github/static/` mirrored.
 
 ### Docs
@@ -376,7 +376,7 @@ messages.
   to half-width `()` + surrounding spaces (per CLAUDE.md Taiwan style
   rules, 97 entries total).
 
-### Nginx wire-up (manual, on 192.168.1.127)
+### Nginx wire-up (manual, on <test-host>)
 - `install.sh` in snippet mode detects an existing Graylog reverse
   proxy and never auto-modifies the customer's config.  For 127 we
   manually wired `include /etc/nginx/snippets/graylog-i18n.conf;` +
@@ -389,7 +389,7 @@ messages.
   a note; unrelated to jt-glogi18n.
 
 ### Notes
-- Deploy continues to target **both** 192.168.1.132 and 192.168.1.127
+- Deploy continues to target **both** <prod-host> and <test-host>
   per user rule from 2026-04-18.
 - Dict `_meta.version` bumped many times this session — see the commit
   log or `git blame` on the dict file for the per-increment detail.
@@ -504,8 +504,8 @@ Cumulative dictionary + engine growth during an intensive UI-walk session.
   fragment should disappear in translation.
 
 ### Notes
-- Deploy targets: **both** `root@192.168.1.132` (production) and
-  `root@192.168.1.127` (install.sh / nginx testing).
+- Deploy targets: **both** `root@<prod-host>` (production) and
+  `root@<test-host>` (install.sh / nginx testing).
 - Dict `_meta.version` tracking: patches bumped many times during
   this run (1.2.0 → 1.2.9 → 1.3.0-1.3.4 → 1.4.0-1.4.9 → 1.5.0-1.5.11
   → 1.6.0-1.6.9 → 1.7.0-1.7.9 → 1.8.0-1.8.9 → 1.9.0-1.9.9 → 2.0.0-2.1.5).

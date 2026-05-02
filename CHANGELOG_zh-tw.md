@@ -29,7 +29,7 @@
 
 ### 部署
 
-- 同步部署三台：`root@192.168.1.132`（正式）、`root@192.168.1.127`（測試）、`root@192.168.1.83`（Lab）。
+- 同步部署三台：`root@<prod-host>`（正式）、`root@<test-host>`（測試）、`root@<lab-host>`（Lab）。
 - `github/static/` 目錄一併更新。
 
 ### 文件
@@ -124,12 +124,12 @@
 - `Grok pattern` → `Grok 規則`（先前保留原文，政策反轉；8 translations + 5 patterns）。
 - 所有字典值內殘餘的全形括號 `（ ）` 改為半形 `()` + 前後空格（依 CLAUDE.md 台灣用語規範，97 處）。
 
-### Nginx 手動接線（192.168.1.127）
+### Nginx 手動接線（<test-host>）
 - `install.sh` snippet 模式偵測到既有 Graylog 反向代理後從不自動動客戶設定。127 上手動把 `include /etc/nginx/snippets/graylog-i18n.conf;` + `location /graylog-i18n/ { alias /opt/jt-glogi18n/static/; }` 加進 `/etc/nginx/sites-available/default`（443 HTTPS）與 `/etc/nginx/sites-enabled/l9000`（8080 HTTP）。備份在 `/opt/jt-glogi18n/backups/manual-wire-*/`。
 - 發現 127 原有一個 `access_log … graylog_audit;` 引用未定義的 log_format（與本專案無關），暫時註解掉並加註解說明。
 
 ### 備註
-- 依 2026-04-18 規則，deploy 仍雙推 `192.168.1.132` 與 `192.168.1.127`。
+- 依 2026-04-18 規則，deploy 仍雙推 `<prod-host>` 與 `<test-host>`。
 - 字典 `_meta.version` 於本輪多次 bump，逐版細節見 git 歷史。
 - 待辦（未實作）：`install.sh --auto-wire` opt-in 旗標，自動把 snippet include + static location 套入既有 Graylog nginx 設定（含備份與 `nginx -t` 失敗時自動還原）。
 
@@ -163,7 +163,7 @@
 - 引擎：`CONDITIONAL` 的 `prev` 與 `next` 檢查可並存；`to: ''`（空字串）為有效值（對應的 fragment 會從顯示中消失），處理「翻譯後該字應該拿掉」的情境。
 
 ### 備註
-- 部署目標：**兩台**（`root@192.168.1.132` 正式、`root@192.168.1.127` 測試）。
+- 部署目標：**兩台**（`root@<prod-host>` 正式、`root@<test-host>` 測試）。
 - 字典 `_meta.version` 於此輪大量 bump（1.2.0 → 1.2.9 → 1.3.0–1.3.4 → 1.4.0–1.4.9 → 1.5.0–1.5.11 → 1.6.0–1.6.9 → 1.7.0–1.7.9 → 1.8.0–1.8.9 → 1.9.0–1.9.9 → 2.0.0–2.1.5）。
 - Grok pattern 政策翻轉：**翻譯**為 `Grok 規則`（先前保留原文）。
 

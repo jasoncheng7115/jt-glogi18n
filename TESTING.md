@@ -11,13 +11,13 @@ Copy this list into an issue description and tick as you go.
 ## 0. Setup
 
 - [ ] Latest dict / JS / CSS / `install.sh` checked out
-- [ ] Test host reachable: `ssh root@192.168.1.127` (install/update/uninstall testing)
-- [ ] Production host reachable: `ssh root@192.168.1.132` (dict push only)
+- [ ] Test host reachable: `ssh root@<test-host>` (install/update/uninstall testing)
+- [ ] Production host reachable: `ssh root@<prod-host>` (dict push only)
 - [ ] Browsers: latest Chrome + Firefox with DevTools open
 - [ ] Test URL: `https://log4.jason.tools/`
 - [ ] Current remote dict version:
   ```bash
-  ssh root@192.168.1.132 \
+  ssh root@<prod-host> \
       'python3 -c "import json;print(json.load(open(\"/opt/jt-glogi18n/static/graylog-i18n-dict.json\"))[\"_meta\"][\"version\"])"'
   ```
 
@@ -392,8 +392,8 @@ localStorage.setItem('graylog-i18n-debug', 'true'); location.reload();
 
 ```bash
 DOMAIN=log4.jason.tools
-PROD=root@192.168.1.132
-TEST=root@192.168.1.127
+PROD=root@<prod-host>
+TEST=root@<test-host>
 ```
 
 - [ ] File mtime recent on both hosts:
