@@ -55,13 +55,17 @@ Graylog。首次載入會依 `navigator.languages` 自動挑選（`zh-Hant` → 
 
 ## 快速安裝
 
-從 GitHub 取得原始碼後執行安裝腳本（以 `bash` 啟動，不依賴 `git clone` 後的執行權限位）：
+從 GitHub 取得（或更新）原始碼後執行安裝腳本（以 `bash` 啟動，不依賴 `git clone` 後的執行權限位）：
 
 ```bash
-git clone https://github.com/jasoncheng7115/jt-glogi18n.git
+# 第一次執行會 clone;已存在則 fast-forward pull —— 一定拿到最新版
+git clone https://github.com/jasoncheng7115/jt-glogi18n.git 2>/dev/null \
+  || git -C jt-glogi18n pull --ff-only
 cd jt-glogi18n
 sudo bash install.sh
 ```
+
+同樣這三行，在同一台主機上重跑就是「升級」流程 —— 不會誤裝到上次留在本機的舊版。
 
 安裝腳本會自動偵測環境並選擇正確模式：
 
