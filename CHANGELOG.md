@@ -7,6 +7,19 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.3] — 2026-05-02
+
+### Added
+- **Version banner**: every `install.sh` invocation (except `help` /
+  `version`) now prints `jt-glogi18n installer vX.Y.Z` as the first line,
+  so it's obvious which version is actually running before any work
+  starts.
+
+### Installer
+- `install.sh` v1.3.2 → **v1.3.3**.
+
+---
+
 ## [3.1.2] — 2026-05-02
 
 **Theme: better installer UX for fresh Graylog hosts.**

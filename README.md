@@ -1,4 +1,4 @@
-# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.1.2`
+# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.1.3`
 
 Localizes the Graylog Web UI into **Traditional Chinese (zh-TW)** and
 **Japanese (ja)** via an Nginx `sub_filter` that injects a small translation

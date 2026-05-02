@@ -7,6 +7,18 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.3] — 2026-05-02
+
+### Added
+- **版本 banner**:每次 `install.sh` 執行(除 `help` / `version` 外),
+  最開頭會印出 `jt-glogi18n installer vX.Y.Z` 一行,跑任何動作前
+  就能直接看到這台機跑的是哪一版。
+
+### Installer
+- `install.sh` v1.3.2 → **v1.3.3**。
+
+---
+
 ## [3.1.2] — 2026-05-02
 
 **主題:乾淨 Graylog 主機上的安裝程式 UX 改善。**

@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.2
+# VERSION: 1.3.3
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.2"
+readonly INSTALLER_VERSION="1.3.3"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -1175,6 +1175,12 @@ while [ $# -gt 0 ]; do
     shift
 done
 CMD="${CMD:-install}"
+
+# One-line version banner at the top of every actionable run
+case "$CMD" in
+    help|version) ;;
+    *) printf '%sjt-glogi18n installer v%s%s\n' "$C_BOLD" "$INSTALLER_VERSION" "$C_0" ;;
+esac
 
 case "$CMD" in
     install)   cmd_install   ;;
