@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.6
+# VERSION: 1.3.7
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.6"
+readonly INSTALLER_VERSION="1.3.7"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -205,23 +205,29 @@ detect_nginx_flavor() {
 }
 
 # returns 0 if a Graylog reverse proxy NOT owned by us is detected.
-# If $NGINX_CONF exists (our own full-conf file), we filter its contents
-# out of the nginx -T dump before matching so a prior install.sh run does
-# not make us think the user installed their own proxy.
+#
+# Like detect_broken_ssl_in_existing_conf, we walk the /etc/nginx tree
+# directly instead of running `nginx -T`, because if the existing config
+# has any error (e.g. a missing cert path) nginx -T emits nothing — and
+# this detection would silently miss a perfectly real reverse-proxy
+# block. We strip our own conf out of the corpus first so a previous
+# install.sh run doesn't make us think the user installed their own
+# proxy.
 detect_existing_graylog_proxy() {
-    command -v nginx >/dev/null 2>&1 || return 1
+    local conf_root="/etc/nginx"
+    [ -d "$conf_root" ] || return 1
     local dump
-    dump="$(nginx -T 2>/dev/null || true)"
+    dump="$(find -L "$conf_root" -type f -print 2>/dev/null \
+            | while IFS= read -r f; do
+                [ "$f" = "$NGINX_CONF" ] && continue
+                cat -- "$f" 2>/dev/null
+                echo
+            done)"
     [ -n "$dump" ] || return 1
-    if [ -f "$NGINX_CONF" ]; then
-        # Drop lines we own: the generated comment marker delimits our block.
-        # Fall back to filtering our server_name line if the marker changed.
-        local ours
-        ours="$(cat "$NGINX_CONF" 2>/dev/null || true)"
-        # Remove every line that appears verbatim in our own config.
-        dump="$(printf '%s\n' "$dump" | grep -Fvx -f <(printf '%s\n' "$ours") || true)"
-    fi
-    grep -Eq 'X-Graylog-Server-URL|proxy_pass[[:space:]]+https?://[^;]*:9000\b' <<<"$dump"
+    # Strip line-end comments so commented-out examples don't fire.
+    local stripped
+    stripped="$(printf '%s\n' "$dump" | sed -e 's/[[:space:]]*#.*$//')"
+    grep -Eq 'X-Graylog-Server-URL|proxy_pass[[:space:]]+https?://[^;]*:9000\b' <<<"$stripped"
 }
 
 check_sub_filter() {

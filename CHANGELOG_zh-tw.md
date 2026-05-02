@@ -7,6 +7,23 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.8] — 2026-05-02
+
+### Fixed
+- **既有 Graylog 反向代理偵測也不再用 `nginx -T`。** 跟 v3.1.5 修
+  SSL 偵測時碰到的同一個盲點:既有 nginx 設定一旦有錯(壞掉的 cert
+  路徑、遺失的 include …),`nginx -T` 不輸出任何東西,
+  `detect_existing_graylog_proxy` 就會默默回「沒有既有 proxy」。安裝
+  程式接著走 full-conf 模式、在 80 埠新寫一個 server,使用者既有的
+  443 反向代理仍然沒有翻譯注入。改成跟 SSL 偵測同一套檔案掃描,並
+  把我們自己的 `$NGINX_CONF` 從掃描範圍排除,避免上一次 install.sh
+  寫的內容把自己當「使用者既有 proxy」。
+
+### Installer
+- `install.sh` v1.3.6 → **v1.3.7**。
+
+---
+
 ## [3.1.7] — 2026-05-02
 
 **Self-sign 自動修補在實機(Ubuntu 22.04 / nginx 1.18 / 缺檔的 Let's Encrypt 路徑)端到端驗證通過。**

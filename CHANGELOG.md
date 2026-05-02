@@ -7,6 +7,25 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.8] — 2026-05-02
+
+### Fixed
+- **Existing-proxy detection no longer relies on `nginx -T`.** Same
+  blind-spot as the SSL detection in v3.1.5: when the running nginx
+  config already fails (broken cert path, missing include, …),
+  `nginx -T` produces no stdout — and `detect_existing_graylog_proxy`
+  silently returned "no proxy found". The installer then went into
+  full-conf mode and wrote a port-80 server next to the user's
+  pre-existing port-443 reverse proxy, leaving the 443 path without
+  translation injection. Switched to the same file-scan approach used
+  for the SSL detection, with our own `$NGINX_CONF` excluded so a prior
+  install.sh run doesn't self-trigger snippet mode.
+
+### Installer
+- `install.sh` v1.3.6 → **v1.3.7**.
+
+---
+
 ## [3.1.7] — 2026-05-02
 
 **Self-sign auto-fix verified end-to-end on a real Ubuntu 22.04 / nginx 1.18 host with broken Let's Encrypt cert paths.**
