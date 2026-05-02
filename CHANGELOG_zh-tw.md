@@ -7,6 +7,22 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.5] — 2026-05-02
+
+### Fixed
+- **既有憑證檔不存在時,self-sign 自動修補現在真的會觸發。**
+  v3.1.2 的 `detect_broken_ssl_in_existing_conf` 用 `nginx -T` 解析設定,
+  但既有設定已失敗時(例如 `ssl_certificate` 指到不存在的路徑),
+  `nginx -T` stdout 是空的、偵測結果回 0 對缺失,所以提示從未出現
+  ── 正是最該被修補的場景。改為直接掃 `/etc/nginx` 底下所有檔案
+  (`find -L` 跟著 symlink),逐檔抓 `ssl_certificate` /
+  `ssl_certificate_key` 指令、剝掉註解、按出現順序配對。
+
+### Installer
+- `install.sh` v1.3.3 → **v1.3.4**。
+
+---
+
 ## [3.1.4] — 2026-05-02
 
 ### Changed
