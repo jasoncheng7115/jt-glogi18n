@@ -1,6 +1,6 @@
 {
     "_meta": {
-        "version": "2.9.6",
+        "version": "2.9.7",
         "graylog_version": "6.0 / 6.1 / 6.2 / 6.3 / 7.0",
         "locale": "zh-TW",
         "last_updated": "2026-04-21",
@@ -1430,7 +1430,7 @@
         "failed indexing attempts in the last 24 hours.": "次失敗的索引嘗試發生於過去 24 小時內。",
         "index set field types": "索引集欄位型別",
         "There is no recent activity yet.": "目前還沒有任何近期活動。",
-        "Whenever any other user will update content you have access to, or share new content with you, it will show up here.": "當其他使用者更新您有存取權限的內容,或與您分享新內容時,會顯示在此。",
+        "Whenever any other user will update content you have access to, or share new content with you, it will show up here.": "當其他使用者更新您有存取權限的內容，或與您分享新內容時，會顯示在此。",
         "Show errors": "顯示錯誤",
         "Letter ID": "訊息 ID",
         "Error message": "錯誤訊息",
