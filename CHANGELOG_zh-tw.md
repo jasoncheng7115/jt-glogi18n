@@ -7,6 +7,16 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.4] — 2026-05-02
+
+### Changed
+- **README 安裝指令改為「clone 或 pull」自癒寫法**:單一行
+  `git clone … 2>/dev/null || git -C jt-glogi18n pull --ff-only`
+  同時涵蓋初次安裝與後續升級 — 不會再因為「destination path already
+  exists」而誤跑到本機留下的舊版 `install.sh`。
+
+---
+
 ## [3.1.3] — 2026-05-02
 
 ### Added

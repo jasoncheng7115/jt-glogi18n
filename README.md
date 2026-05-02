@@ -1,4 +1,4 @@
-# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.1.3`
+# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.1.4`
 
 Localizes the Graylog Web UI into **Traditional Chinese (zh-TW)** and
 **Japanese (ja)** via an Nginx `sub_filter` that injects a small translation
@@ -62,14 +62,19 @@ and a suggested replacement. See the [reporting guide](CONTRIBUTING.md).
 
 ## Quick install
 
-Clone the repo and run the installer with `bash` (works regardless of the
-file's executable bit after `git clone`):
+Clone (or refresh) the repo, then run the installer with `bash` (works
+regardless of the file's executable bit after `git clone`):
 
 ```bash
-git clone https://github.com/jasoncheng7115/jt-glogi18n.git
+# Clone fresh, or fast-forward-pull an existing clone — always lands on latest
+git clone https://github.com/jasoncheng7115/jt-glogi18n.git 2>/dev/null \
+  || git -C jt-glogi18n pull --ff-only
 cd jt-glogi18n
 sudo bash install.sh
 ```
+
+Re-running these three lines on the same host is also how you upgrade —
+you'll never accidentally install an old cached copy.
 
 The installer auto-detects your environment and chooses the right mode:
 

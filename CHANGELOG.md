@@ -7,6 +7,17 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.4] — 2026-05-02
+
+### Changed
+- **Install command in README is now self-healing**: a single
+  `git clone … 2>/dev/null || git -C jt-glogi18n pull --ff-only` line
+  works for both first-time install and upgrade — no more "destination
+  path already exists" then accidentally running the previous-day's copy
+  of `install.sh`.
+
+---
+
 ## [3.1.3] — 2026-05-02
 
 ### Added
