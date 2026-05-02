@@ -7,6 +7,21 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.9] — 2026-05-02
+
+### Fixed
+- **`graylog-i18n-ja.json` was missing from `REQUIRED_FILES`**, so the
+  installer never copied the Japanese dictionary to `$INSTALL_DIR`.
+  Fresh installs ended up with `/graylog-i18n/graylog-i18n-ja.json`
+  returning HTTP 404 — switching the locale toggle to 日本語 silently
+  fell back to English. Added it to the array; verified on graylog7
+  that all five static files now serve HTTP 200.
+
+### Installer
+- `install.sh` v1.3.7 → **v1.3.8**.
+
+---
+
 ## [3.1.8] — 2026-05-02
 
 ### Fixed

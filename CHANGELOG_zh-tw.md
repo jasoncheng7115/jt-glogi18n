@@ -7,6 +7,20 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.9] — 2026-05-02
+
+### Fixed
+- **`graylog-i18n-ja.json` 漏掉在 `REQUIRED_FILES` 裡**,所以安裝
+  程式從未把日文字典複製到 `$INSTALL_DIR`。乾淨安裝完成後,
+  `/graylog-i18n/graylog-i18n-ja.json` 一律回 HTTP 404 —— 懸浮按鈕
+  切到日本語會默默退回英文。已加進陣列;graylog7 上驗證五支靜態檔
+  全部 HTTP 200。
+
+### Installer
+- `install.sh` v1.3.7 → **v1.3.8**。
+
+---
+
 ## [3.1.8] — 2026-05-02
 
 ### Fixed
