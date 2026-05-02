@@ -7,6 +7,30 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.1.7] — 2026-05-02
+
+**Self-sign auto-fix verified end-to-end on a real Ubuntu 22.04 / nginx 1.18 host with broken Let's Encrypt cert paths.**
+
+### Fixed
+- **`set -euo pipefail` was killing the script before the self-sign
+  prompt could appear.** Three sites used
+  `nginx -t 2>&1 | sed 's/^/    /'` to pretty-print the failing config;
+  with `pipefail` on, the failing nginx exit propagated through the pipe
+  and `set -e` aborted the whole installer right after the error
+  message. Appended `|| true` to those three pipelines.
+
+### Verified
+- On a Ubuntu 22.04 / nginx 1.18 host with three broken cert references
+  (`/etc/ssl/certs/ssl-cert-snakeoil.pem`, plus two pointing at
+  `/etc/ssl/letsencrypt/fullchain.cer`): installer detected all three,
+  generated 10-year self-signed certs in place, `nginx -t` passed,
+  full-conf write + reload + verification all succeeded.
+
+### Installer
+- `install.sh` v1.3.5 → **v1.3.6**.
+
+---
+
 ## [3.1.6] — 2026-05-02
 
 ### Fixed

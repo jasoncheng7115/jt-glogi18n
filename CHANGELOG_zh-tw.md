@@ -7,6 +7,29 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.1.7] — 2026-05-02
+
+**Self-sign 自動修補在實機(Ubuntu 22.04 / nginx 1.18 / 缺檔的 Let's Encrypt 路徑)端到端驗證通過。**
+
+### Fixed
+- **`set -euo pipefail` 在 self-sign 提示出現前就殺掉腳本。** 三處
+  用 `nginx -t 2>&1 | sed 's/^/    /'` 美化錯誤輸出 ── pipefail 開啟下,
+  nginx 失敗的 exit code 透過 pipe 傳遞,`set -e` 在錯誤訊息印完之後
+  立刻中止整個安裝程式,自簽提示根本來不及出現。三處都補
+  `|| true`。
+
+### Verified
+- Ubuntu 22.04 / nginx 1.18,既有設定有 3 個壞掉的 cert 路徑
+  (`/etc/ssl/certs/ssl-cert-snakeoil.pem`、以及兩個指向
+  `/etc/ssl/letsencrypt/fullchain.cer` 的):安裝程式正確偵測出 3
+  個、原地產生 10 年自簽、`nginx -t` 通過、寫入 full-conf、reload、
+  驗證 all green。
+
+### Installer
+- `install.sh` v1.3.5 → **v1.3.6**。
+
+---
+
 ## [3.1.6] — 2026-05-02
 
 ### Fixed
