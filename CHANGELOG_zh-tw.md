@@ -7,6 +7,30 @@
 
 > [English version](CHANGELOG.md)
 
+## [3.2.0] — 2026-05-05
+
+**主題:乾淨安裝預設啟用 HTTPS + 加上 nginx 壞掉時的修復 SOP。**
+
+### Added
+- **乾淨安裝自動產生自簽憑證。** 進到 full-conf 模式且使用者沒提供
+  `SSL_CRT` / `SSL_KEY` 時,安裝程式現在會(互動模式詢問、非互動模式
+  直接執行)在 `/etc/ssl/jt-glogi18n/selfsigned.{crt,key}` 產生
+  10 年期 RSA-2048 自簽憑證。CN 預設用 `$DOMAIN`,catch-all 模式則
+  退回主機 FQDN。客戶端乾淨環境不會再「裝完是 HTTP 而不是 HTTPS」
+  讓人困惑。
+- **`--no-https` 旗標**(與 `NO_HTTPS=1` 環境變數):明確 opt-out 為
+  HTTP-only port 80 server block(CI、內網-only、外層另有反向代理
+  的情境)。
+- **README 加上「緊急修復」段**,說明使用者手動刪掉
+  `/etc/nginx/nginx.conf` 後 dpkg 拒絕重建時,如何用 dpkg
+  `--force-confmiss` 強制還原 conffile 的處理流程(英文 / 中文版
+  皆已加入)。
+
+### Installer
+- `install.sh` v1.3.8 → **v1.4.0**。
+
+---
+
 ## [3.1.9] — 2026-05-02
 
 ### Fixed

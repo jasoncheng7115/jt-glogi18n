@@ -1,4 +1,4 @@
-# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.1.9`
+# jt-glogi18n — Graylog Localization Pack (zh-TW / ja)  `v3.2.0`
 
 Localizes the Graylog Web UI into **Traditional Chinese (zh-TW)** and
 **Japanese (ja)** via an Nginx `sub_filter` that injects a small translation
@@ -214,6 +214,55 @@ window.__graylogI18n.patterns;       // pattern list
 | Installer says `http_sub_module: NO` | Wrong Nginx package | Debian: `nginx-full` or `nginx-extras`; RHEL: use the nginx.org repo |
 | `502 Bad Gateway` | Backend (`$BACKEND`) not listening | `./install.sh doctor` — backend reachability is checked there |
 | Installer ran but UI still English | `server_name` in our config doesn't match the URL you're visiting | Check `/etc/nginx/conf.d/graylog-i18n.conf` — the `server_name` must match the browser's URL host |
+
+## Recovery — when nginx is broken after a botched install
+
+If the host you ran the installer on ends up with a broken nginx
+(`nginx -t` fails, `systemctl start nginx` fails, dpkg post-install
+hooks complain), the most common root cause is a missing
+`/etc/nginx/nginx.conf` — usually because someone removed it manually
+and `dpkg` then refused to recreate the file (it remembers it as a
+"user-removed conffile"). Symptoms include:
+
+```
+nginx: [emerg] open() "/etc/nginx/nginx.conf" failed (2: No such file or directory)
+```
+
+Recover with these five steps (Debian / Ubuntu):
+
+```bash
+# 1. Inspect /etc/nginx state
+ls -la /etc/nginx/
+
+# 2. Check whether dpkg still tracks nginx.conf as a conffile
+dpkg-query -W -f='${Conffiles}\n' nginx-common | grep nginx.conf
+
+# 3. Force-redeploy the missing conffile from nginx-common
+sudo apt-get install --reinstall \
+    -o Dpkg::Options::="--force-confmiss" nginx-common
+
+# 4. Resume any half-configured packages
+sudo dpkg --configure -a
+sudo apt-get install -f
+
+# 5. Verify and start
+sudo nginx -t
+sudo systemctl restart nginx
+sudo systemctl status nginx
+```
+
+Once nginx is healthy again, re-run the jt-glogi18n installer:
+
+```bash
+cd ~/jt-glogi18n
+git pull --ff-only
+sudo bash install.sh
+```
+
+The installer's pre-flight check will validate the freshly restored
+`nginx.conf` before writing anything, and the post-write rollback path
+will restore the previous `/etc/nginx/conf.d/graylog-i18n.conf` backup
+if anything goes wrong.
 
 ## Uninstall
 

@@ -1,4 +1,4 @@
-# jt-glogi18n — Graylog Web UI 本地化套件（繁體中文 / 日本語）  `v3.1.9`
+# jt-glogi18n — Graylog Web UI 本地化套件（繁體中文 / 日本語）  `v3.2.0`
 
 透過 Nginx `sub_filter` 在 HTTP 回應的 `</head>` 前注入翻譯腳本與 CSS，
 將 Graylog Web UI 介面在瀏覽器端翻譯為 **繁體中文 （zh-TW）** 或
@@ -205,6 +205,52 @@ window.__graylogI18n.patterns;       // pattern 列表
 | 跑完安裝但 UI 還是英文 | 我們設定檔的 `server_name` 跟您訪問的網址不一致 | 檢查 `/etc/nginx/conf.d/graylog-i18n.conf`，`server_name` 必須與瀏覽器訪問的 host 相符 |
 | 特定字串未翻譯 | 不在字典 / 文字被拆成多個 text node | 加入字典（必要時拆成多個 fragment） |
 | Log 內容被誤譯 | skip list 漏洞 | 於 JS 的 `SKIP_SELECTORS` 新增對應選擇器 |
+
+## 緊急修復 — 當 nginx 安裝後壞掉
+
+如果跑完安裝程式後 nginx 整個壞掉(`nginx -t` 失敗、`systemctl start
+nginx` 起不來、dpkg post-install hook 一直噴錯),最常見的根因是
+`/etc/nginx/nginx.conf` 被人手動刪掉,然後 dpkg 把它記成「使用者
+已刪除的 conffile」就再也不會自動補回來。典型錯誤:
+
+```
+nginx: [emerg] open() "/etc/nginx/nginx.conf" failed (2: No such file or directory)
+```
+
+Debian / Ubuntu 復原五步驟:
+
+```bash
+# 1. 先看 /etc/nginx 現狀
+ls -la /etc/nginx/
+
+# 2. 確認 dpkg 是否仍把 nginx.conf 視為 conffile
+dpkg-query -W -f='${Conffiles}\n' nginx-common | grep nginx.conf
+
+# 3. 強制重新部署 nginx-common 提供的預設 conffile
+sudo apt-get install --reinstall \
+    -o Dpkg::Options::="--force-confmiss" nginx-common
+
+# 4. 把卡住的套件設定完成
+sudo dpkg --configure -a
+sudo apt-get install -f
+
+# 5. 驗證 + 啟動
+sudo nginx -t
+sudo systemctl restart nginx
+sudo systemctl status nginx
+```
+
+nginx 恢復正常後,再重跑 jt-glogi18n 安裝:
+
+```bash
+cd ~/jt-glogi18n
+git pull --ff-only
+sudo bash install.sh
+```
+
+安裝程式的 pre-flight 會先驗證剛還原的 `nginx.conf`,寫入失敗時的
+rollback 也會自動還原 `/etc/nginx/conf.d/graylog-i18n.conf` 的上一份
+備份。
 
 ## 移除
 

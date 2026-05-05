@@ -7,6 +7,32 @@ bumps for dictionary-only changes.
 
 > [繁體中文版](CHANGELOG_zh-tw.md)
 
+## [3.2.0] — 2026-05-05
+
+**Theme: HTTPS by default for fresh installs + recovery SOP for botched nginx setups.**
+
+### Added
+- **Auto self-signed cert on a clean install.** When the installer is
+  about to write a new server block (full-conf mode) and the user
+  hasn't provided `SSL_CRT` / `SSL_KEY`, it now offers (or in
+  non-interactive mode silently uses) a 10-year RSA-2048 self-signed
+  certificate generated at `/etc/ssl/jt-glogi18n/selfsigned.{crt,key}`.
+  CN defaults to `$DOMAIN`, falling back to the host's FQDN when
+  catch-all is used. Customers no longer get an HTTP-only setup
+  by surprise on a fresh box.
+- **`--no-https` flag** (and `NO_HTTPS=1` env): explicit opt-out for
+  pure HTTP-only port-80 server blocks (CI, internal-only deployments,
+  reverse-proxy-in-front scenarios).
+- **README "Recovery" section** documenting the dpkg `--force-confmiss`
+  procedure for restoring `/etc/nginx/nginx.conf` when it was manually
+  removed and dpkg refuses to recreate it. Added in both English and
+  Traditional Chinese.
+
+### Installer
+- `install.sh` v1.3.8 → **v1.4.0**.
+
+---
+
 ## [3.1.9] — 2026-05-02
 
 ### Fixed

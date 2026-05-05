@@ -19,7 +19,7 @@
 #   - Firewalls:        firewalld / ufw (auto-open on request)
 #   - Nginx flavors:    nginx / OpenResty / Tengine
 #
-# VERSION: 1.3.8
+# VERSION: 1.4.0
 #
 # Copyright (c) Jason Cheng (Jason Tools) <jason@jason.tools>
 # Licensed under the Apache License, Version 2.0.
@@ -39,7 +39,7 @@ fi
 set -euo pipefail
 
 # ---- constants ---------------------------------------------------------------
-readonly INSTALLER_VERSION="1.3.8"
+readonly INSTALLER_VERSION="1.4.0"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly STATIC_SRC="$SCRIPT_DIR/static"
 readonly REQUIRED_FILES=(
@@ -56,6 +56,9 @@ readonly BACKUP_ROOT="$INSTALL_ROOT/backups"
 readonly NGINX_CONF="/etc/nginx/conf.d/graylog-i18n.conf"
 readonly SNIPPET_FILE="/etc/nginx/snippets/graylog-i18n.conf"
 readonly LOG_FILE="/var/log/jt-glogi18n-install.log"
+readonly SSL_DIR="/etc/ssl/jt-glogi18n"
+readonly SSL_CRT_DEFAULT="$SSL_DIR/selfsigned.crt"
+readonly SSL_KEY_DEFAULT="$SSL_DIR/selfsigned.key"
 
 # ---- runtime flags / env -----------------------------------------------------
 ASSUME_YES="${ASSUME_YES:-0}"
@@ -65,9 +68,11 @@ DOMAIN="${DOMAIN:-}"
 BACKEND="${BACKEND:-127.0.0.1:9000}"
 SSL_CRT="${SSL_CRT:-}"
 SSL_KEY="${SSL_KEY:-}"
+NO_HTTPS="${NO_HTTPS:-0}"
 OPEN_FIREWALL="${OPEN_FIREWALL:-ask}"   # yes | no | ask
 SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
 NO_COLOR="${NO_COLOR:-}"
+AUTO_SELFSIGN=0
 
 # ---- output / logging --------------------------------------------------------
 if [ -n "$NO_COLOR" ] || [ ! -t 1 ]; then
@@ -344,46 +349,54 @@ detect_broken_ssl_in_existing_conf() {
     [ "${#MISSING_SSL_PAIRS[@]}" -gt 0 ]
 }
 
+# Generate a single 10-year RSA-2048 self-signed cert at the given paths.
+# Caller picks CN; we default to localhost if blank.
+generate_selfsigned_pair() {
+    local cert="$1" key="$2" cn="${3:-localhost}"
+    command -v openssl >/dev/null 2>&1 || { err "openssl not found, cannot self-sign"; return 1; }
+    [ -n "$cn" ] || cn="localhost"
+    local cert_dir key_dir
+    cert_dir="$(dirname "$cert")"
+    key_dir="$(dirname "$key")"
+    run install -d -m 0755 "$cert_dir"
+    run install -d -m 0700 "$key_dir"
+    info "Generating self-signed cert (10 years, CN=$cn): $cert"
+    if [ "$DRY_RUN" = 1 ]; then
+        info "[dry-run] would openssl req -x509 -newkey rsa:2048 -days 3650 ..."
+        return 0
+    fi
+    if ! openssl req -x509 -newkey rsa:2048 -nodes \
+            -days 3650 \
+            -keyout "$key" \
+            -out "$cert" \
+            -subj "/CN=$cn" \
+            -addext "subjectAltName=DNS:$cn,DNS:localhost,IP:127.0.0.1" \
+            >/dev/null 2>&1; then
+        warn "openssl failed at $cert; retrying without -addext (older openssl?)"
+        openssl req -x509 -newkey rsa:2048 -nodes \
+            -days 3650 \
+            -keyout "$key" \
+            -out "$cert" \
+            -subj "/CN=$cn" \
+            >/dev/null 2>&1 \
+            || { err "Failed to generate self-signed cert at $cert"; return 1; }
+    fi
+    chmod 0644 "$cert" 2>/dev/null || true
+    chmod 0600 "$key"  2>/dev/null || true
+    ok "Self-signed cert written: $cert (10 years, key: $key)"
+    return 0
+}
+
 # Generate a 10-year self-signed cert at every path in MISSING_SSL_PAIRS.
 # CN defaults to $DOMAIN, falls back to hostname when DOMAIN is "_" or empty.
 generate_selfsigned_for_missing() {
-    command -v openssl >/dev/null 2>&1 || { err "openssl not found, cannot self-sign"; return 1; }
-    local pair cert key cert_dir key_dir cn
-    cn="${DOMAIN:-}"
+    local cn="${DOMAIN:-}"
     if [ -z "$cn" ] || [ "$cn" = "_" ]; then
         cn="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo localhost)"
     fi
+    local pair
     for pair in "${MISSING_SSL_PAIRS[@]}"; do
-        cert="${pair%|*}"
-        key="${pair#*|}"
-        cert_dir="$(dirname "$cert")"
-        key_dir="$(dirname "$key")"
-        run install -d -m 0755 "$cert_dir"
-        run install -d -m 0700 "$key_dir"
-        info "Generating self-signed cert (10 years, CN=$cn): $cert"
-        if [ "$DRY_RUN" = 1 ]; then
-            info "[dry-run] would openssl req -x509 -newkey rsa:2048 -days 3650 ..."
-            continue
-        fi
-        if ! openssl req -x509 -newkey rsa:2048 -nodes \
-                -days 3650 \
-                -keyout "$key" \
-                -out "$cert" \
-                -subj "/CN=$cn" \
-                -addext "subjectAltName=DNS:$cn,DNS:localhost,IP:127.0.0.1" \
-                >/dev/null 2>&1; then
-            warn "openssl failed at $cert; retrying without -addext (older openssl?)"
-            openssl req -x509 -newkey rsa:2048 -nodes \
-                -days 3650 \
-                -keyout "$key" \
-                -out "$cert" \
-                -subj "/CN=$cn" \
-                >/dev/null 2>&1 \
-                || { err "Failed to generate self-signed cert at $cert"; return 1; }
-        fi
-        chmod 0644 "$cert" 2>/dev/null || true
-        chmod 0600 "$key"  2>/dev/null || true
-        ok "Self-signed cert written: $cert (10 years, key: $key)"
+        generate_selfsigned_pair "${pair%|*}" "${pair#*|}" "$cn" || return 1
     done
     return 0
 }
@@ -652,13 +665,31 @@ prompt_config() {
     fi
     valid_backend "$BACKEND" || die "Invalid BACKEND format (expected host:port): $BACKEND"
 
-    if [ -z "$SSL_CRT" ] && [ "$ASSUME_YES" != "1" ]; then
-        if confirm "Enable HTTPS? (strongly recommended)" y; then
-            read -rp "  SSL certificate path (.crt/.pem): " SSL_CRT
-            read -rp "  SSL private key path (.key):     " SSL_KEY
+    if [ "$NO_HTTPS" = "1" ]; then
+        info "HTTPS disabled (--no-https); writing HTTP-only server block on port 80"
+        SSL_CRT=""
+        SSL_KEY=""
+    elif [ -z "$SSL_CRT" ]; then
+        if [ "$ASSUME_YES" = "1" ]; then
+            # Non-interactive default: auto self-sign so a fresh customer
+            # install gets HTTPS without any extra steps.
+            SSL_CRT="$SSL_CRT_DEFAULT"
+            SSL_KEY="$SSL_KEY_DEFAULT"
+            AUTO_SELFSIGN=1
+            info "Non-interactive: will generate 10-year self-signed cert at $SSL_CRT"
+        elif confirm "Enable HTTPS? (strongly recommended)" y; then
+            read -rp "  SSL certificate path (blank = generate 10-year self-signed): " SSL_CRT
+            if [ -z "$SSL_CRT" ]; then
+                SSL_CRT="$SSL_CRT_DEFAULT"
+                SSL_KEY="$SSL_KEY_DEFAULT"
+                AUTO_SELFSIGN=1
+                info "Will generate 10-year self-signed cert at $SSL_CRT"
+            else
+                read -rp "  SSL private key path (.key): " SSL_KEY
+            fi
         fi
     fi
-    if [ -n "$SSL_CRT" ]; then
+    if [ -n "$SSL_CRT" ] && [ "$AUTO_SELFSIGN" != 1 ]; then
         [ -f "$SSL_CRT" ] || die "SSL certificate not found: $SSL_CRT"
         [ -n "$SSL_KEY" ] || die "SSL_KEY is required when HTTPS is enabled"
         [ -f "$SSL_KEY" ] || die "SSL private key not found: $SSL_KEY"
@@ -945,6 +976,16 @@ cmd_install() {
         ok "Existing nginx configuration is valid"
     fi
 
+    if [ "$AUTO_SELFSIGN" = 1 ] && [ ! -f "$SSL_CRT" ]; then
+        step "Generating self-signed certificate for fresh install"
+        local _cn="${DOMAIN:-}"
+        if [ -z "$_cn" ] || [ "$_cn" = "_" ]; then
+            _cn="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo localhost)"
+        fi
+        generate_selfsigned_pair "$SSL_CRT" "$SSL_KEY" "$_cn" \
+            || die "Failed to generate self-signed certificate"
+    fi
+
     step "Writing nginx configuration"
     write_full_conf
 
@@ -1143,6 +1184,10 @@ Flags:
       --backend=HOST:PORT      Graylog backend (default 127.0.0.1:9000)
       --ssl-crt=/path          TLS certificate (setting this enables HTTPS)
       --ssl-key=/path          TLS private key
+      --no-https               write an HTTP-only port-80 server block;
+                               skip the auto self-signed certificate that
+                               otherwise gets generated when no SSL paths
+                               are supplied
       --open-firewall=yes|no   force / skip firewall opening (default: ask)
       --skip-preflight         do NOT run 'nginx -t' on the existing config
                                before writing ours (use only if you know
@@ -1152,7 +1197,7 @@ Flags:
 
 Environment variables (equivalent to flags):
   ASSUME_YES, DRY_RUN, VERBOSE, DOMAIN, BACKEND, SSL_CRT, SSL_KEY,
-  OPEN_FIREWALL, SKIP_PREFLIGHT, NO_COLOR
+  NO_HTTPS, OPEN_FIREWALL, SKIP_PREFLIGHT, NO_COLOR
 
 Install modes (auto-selected):
   A) nginx not installed        -> installed via apt/dnf/yum/zypper/apk/pacman
@@ -1194,6 +1239,7 @@ while [ $# -gt 0 ]; do
         --open-firewall)      shift; OPEN_FIREWALL="${1:-ask}" ;;
         --open-firewall=*)    OPEN_FIREWALL="${1#*=}" ;;
         --skip-preflight)     SKIP_PREFLIGHT=1 ;;
+        --no-https)           NO_HTTPS=1 ;;
         install|update|uninstall|status|doctor|rollback) CMD="$1" ;;
         --) shift; break ;;
         -*) err "Unknown flag: $1"; echo; cmd_help; exit 1 ;;
