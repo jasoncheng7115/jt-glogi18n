@@ -548,21 +548,28 @@
         // radio/toggle group — detected by looking for "或" or "or" anywhere
         // in the nearest group container. Avoids over-translating "and" in
         // ordinary English sentences.
-        'and': { to: '且', check: function (n) {
-            // Only translate "and" when it's the sole visible text of its
-            // immediate parent (e.g. a radio-button <label>). This avoids
-            // over-translating "and" inside regular prose sentences.
+        'and': { to: function (n) {
+            // Two bold/emphasis items read as a list conjunction -> 與 / と;
+            // the and/or toggle case reads as logical -> 且.
+            if (andFlankedByEmphasis(n)) return currentLocale === 'ja' ? 'と' : '與';
+            return '且';
+        }, check: function (n) {
             var par = n.parentElement;
             if (!par) return false;
-            if ((par.textContent || '').trim() !== 'and') return false;
-            // Additionally require that an ancestor (small container) also
-            // contains "或" / "or" — confirms it's an and/or toggle pair.
-            var el = par.parentElement;
-            for (var i = 0; i < 6 && el; i++) {
-                var t = (el.textContent || '').trim();
-                if (t && t.length < 120 && /或|\bor\b/i.test(t)) return true;
-                el = el.parentElement;
+            // Case A: "and" is the sole visible text of its immediate parent
+            // (e.g. a radio-button <label>) AND an ancestor container also holds
+            // "或" / "or" — confirms it's an and/or toggle pair.
+            if ((par.textContent || '').trim() === 'and') {
+                var el = par.parentElement;
+                for (var i = 0; i < 6 && el; i++) {
+                    var t = (el.textContent || '').trim();
+                    if (t && t.length < 120 && /或|\bor\b/i.test(t)) return true;
+                    el = el.parentElement;
+                }
             }
+            // Case B: " and " sits directly between two <b>/<strong>/<em>
+            // emphasis spans, e.g. "your last opened and favorite items".
+            if (andFlankedByEmphasis(n)) return true;
             return false;
         }}
     };
@@ -594,6 +601,26 @@
     var CONDITIONAL_PATTERNS = [
         { match: /^by (\S.*)$/, replace: '由 $1', prev: _verbTailRE }
     ];
+
+    // True when a text node (trimming to "and") sits directly between two
+    // inline emphasis spans (<b>/<strong>/<em>) — e.g. the Quick Jump hint
+    // "your last opened and favorite items". Used to translate that "and"
+    // as a list conjunction rather than a logical and/or toggle.
+    function andFlankedByEmphasis(textNode) {
+        function adjacentElement(node, dir) {
+            var s = dir === 'prev' ? node.previousSibling : node.nextSibling;
+            while (s) {
+                if (s.nodeType === Node.ELEMENT_NODE) return s;
+                if (s.nodeType === Node.TEXT_NODE && s.textContent.trim()) return null;
+                s = dir === 'prev' ? s.previousSibling : s.nextSibling;
+            }
+            return null;
+        }
+        var prevEl = adjacentElement(textNode, 'prev');
+        var nextEl = adjacentElement(textNode, 'next');
+        var EM = /^(B|STRONG|EM)$/;
+        return !!(prevEl && nextEl && EM.test(prevEl.tagName) && EM.test(nextEl.tagName));
+    }
 
     function prevTextContent(textNode) {
         var prev = textNode.previousSibling;
@@ -649,8 +676,9 @@
                 try { if (!cond.check(textNode)) passed = false; } catch (e) { passed = false; }
             }
             if (passed) {
-                log('conditional:', text, '->', cond.to, 'ctx prev=', prevText);
-                textNode.textContent = textNode.textContent.replace(text, cond.to);
+                var toVal = typeof cond.to === 'function' ? cond.to(textNode) : cond.to;
+                log('conditional:', text, '->', toVal, 'ctx prev=', prevText);
+                textNode.textContent = textNode.textContent.replace(text, toVal);
                 stats.translated++;
             }
             return;
